@@ -6,3 +6,9 @@ dist/
 playwright-report/
 test-results/
 *.log
+android/.gradle/
+android/local.properties
+android/**/build/
+*.keystore
+*.jks
+*.apk

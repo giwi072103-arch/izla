@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">IZLA</string>
+    <string name="offline_title">Не удалось открыть IZLA</string>
+    <string name="offline_body">Проверьте подключение к интернету и попробуйте снова.</string>
+    <string name="retry">Повторить</string>
+    <string name="external_error">Не найдено приложение для открытия ссылки</string>
+    <string name="camera_denied">Разрешите камеру в настройках приложения, чтобы сделать фото.</string>
+    <string name="location_denied">Для передачи геопозиции разрешите доступ к местоположению.</string>
+</resources>

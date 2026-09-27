@@ -84,3 +84,7 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 - +998200309100
 - anvarikromov778@gmail.com
 - https://t.me/i0000001i
+
+## Android APK (добавлено)
+
+В `android/` добавлен онлайн-клиент для Android 8+. Отдельный workflow **Build IZLA Android APK** собирает устанавливаемый APK с тестовой подписью. Подробности, ограничения и установка — в [android/README.md](android/README.md). Это оболочка действующего IZLA с камерой и foreground GPS; отдельного нативного интерфейса, фонового курьерского трекинга и интеграции MyID SDK пока нет.

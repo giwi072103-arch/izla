@@ -1,0 +1,53 @@
+name: Build IZLA Android APK
+on:
+  push:
+    branches: [main]
+    paths: ['android/**', '.github/workflows/android.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: izla-android-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+      # This is a development certificate only, never a production signing key.
+      - uses: actions/cache@v4
+        with:
+          path: ~/.android/debug.keystore
+          key: izla-pilot-debug-keystore-v1
+      - name: Install Android SDK
+        run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
+      - name: Build and lint APK
+        working-directory: android
+        run: gradle --no-daemon :app:assembleDebug :app:lintDebug
+      - name: Verify signature and package
+        run: |
+          mkdir -p apk
+          cp android/app/build/outputs/apk/debug/app-debug.apk apk/izla-1.0.0-pilot.apk
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose apk/izla-1.0.0-pilot.apk
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging apk/izla-1.0.0-pilot.apk
+          sha256sum apk/izla-1.0.0-pilot.apk > apk/SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: izla-android-apk
+          path: apk/
+          retention-days: 30
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: android-lint-report
+          path: android/app/build/reports/lint-results-debug.html
+          if-no-files-found: ignore

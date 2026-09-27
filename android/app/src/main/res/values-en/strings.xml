@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">IZLA</string>
+    <string name="offline_title">Could not open IZLA</string>
+    <string name="offline_body">Check your internet connection and try again.</string>
+    <string name="retry">Try again</string>
+    <string name="external_error">No app can open this link</string>
+    <string name="camera_denied">Allow camera access in app settings to take a photo.</string>
+    <string name="location_denied">Allow location access to share your position.</string>
+</resources>

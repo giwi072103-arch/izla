@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">IZLA</string>
+    <string name="offline_title">IZLA ochilmadi</string>
+    <string name="offline_body">Internet aloqasini tekshiring va qayta urinib ko‘ring.</string>
+    <string name="retry">Qayta urinish</string>
+    <string name="external_error">Havolani ochish uchun ilova topilmadi</string>
+    <string name="camera_denied">Suratga olish uchun sozlamalarda kameraga ruxsat bering.</string>
+    <string name="location_denied">Joylashuvni uzatish uchun ruxsat bering.</string>
+</resources>
