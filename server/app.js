@@ -442,9 +442,9 @@ export async function createApp() {
   app.post("/api/orders", auth, verified, async (req, res) => {
     if (req.user.role !== "client") throw error(403, "Заявки создаёт клиент");
     const v = orderSchema.parse(req.body),
-      id = randomUUID(),
-      c = await db.connect();
+      id = randomUUID();
     imageBuffer(v.photo);
+    const c = await db.connect();
     try {
       await c.query("BEGIN");
       await c.query(

@@ -61,6 +61,9 @@ test("complete order flow, evidence authorization, dispute and review permission
       (await call("/orders", { ...payload, photo: "" }, c.cookie)).status,
       400,
     );
+    if (process.env.DATABASE_URL) {
+      assert.equal(db.totalCount, db.idleCount, 'Invalid image must not leak a checked-out PostgreSQL connection');
+    }
     const created = await call("/orders", payload, c.cookie);
     assert.equal(created.status, 200, JSON.stringify(created.json));
     const id = created.json.id;
