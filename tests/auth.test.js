@@ -51,6 +51,10 @@ test("Telegram verifies matching self-contact, browser secret and one-time code"
     });
     assert.equal(start.status, 200);
     const message = { chat: { id: tg, type: "private" }, from: { id: tg } };
+    await post("/telegram/webhook", { message: { ...message, text: "/start" } }, true);
+    assert.match(sent.at(-1).text, /Добро пожаловать/);
+    await post("/telegram/webhook", { message: { ...message, text: "/start expired" } }, true);
+    assert.match(sent.at(-1).text, /истекла/);
     assert.equal(
       (
         await post("/telegram/webhook", {

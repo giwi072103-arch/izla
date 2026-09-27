@@ -219,8 +219,17 @@ export async function createApp() {
     const m = req.body.message;
     if (!m || m.chat?.type !== "private" || !m.from)
       return res.json({ ok: true });
-    if (m.text?.startsWith("/start ")) {
-      const id = m.text.slice(7).trim();
+    const startCommand = m.text?.match(/^\/start(?:@[A-Za-z0-9_]+)?(?:\s+(\S+))?\s*$/);
+    if (startCommand) {
+      const id = startCommand[1];
+      if (!id) {
+        await telegram("sendMessage", {
+          chat_id: m.chat.id,
+          text: "Добро пожаловать в IZLA! Для регистрации откройте приложение, укажите имя и номер вашего Telegram, затем нажмите «Получить код в Telegram». Перейдите в бота по выданной ссылке. / Ro‘yxatdan o‘tish uchun IZLA ilovasini oching.",
+          reply_markup: { inline_keyboard: [[{ text: "Открыть IZLA / IZLA’ni ochish", url: process.env.APP_ORIGIN || "https://izla-production.up.railway.app" }]] },
+        });
+        return res.json({ ok: true });
+      }
       const ch = await one(
         "SELECT * FROM auth_challenges WHERE id=$1 AND expires_at>now() AND consumed=false",
         [id],
@@ -240,6 +249,12 @@ export async function createApp() {
             resize_keyboard: true,
             one_time_keyboard: true,
           },
+        });
+      } else {
+        await telegram("sendMessage", {
+          chat_id: m.chat.id,
+          text: "Ссылка регистрации истекла или недействительна. Вернитесь в IZLA и запросите новый код.",
+          reply_markup: { remove_keyboard: true },
         });
       }
     }
