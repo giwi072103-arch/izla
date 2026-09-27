@@ -281,9 +281,9 @@ function Shell({ lang, setLang }) {
             </h3>
             <p>
               {T(
-                "Проверка личности, фото этапов и поддержка в спорных ситуациях.",
-                "Shaxsni tekshirish, jarayon suratlari va nizolarda yordam.",
-                "Identity checks, photo evidence and support when you need it.",
+                "Подтверждённый телефон, фото этапов и поддержка в спорных ситуациях.",
+                "Tasdiqlangan telefon, jarayon suratlari va nizolarda yordam.",
+                "Confirmed phone, photo evidence and support when you need it.",
               )}
             </p>
             <button className="text-button" onClick={() => go("terms")}>
@@ -306,8 +306,16 @@ function Shell({ lang, setLang }) {
         <main>
           {page === "catalog" ? (
             <>
-              <div className="page-heading">
-                <div>
+              <div className="page-heading catalog-hero">
+                <div className="hero-orbit" aria-hidden="true">
+                  <div className="orbit-ring" /><div className="orbit-ring inner" />
+                  <span className="orbit-core"><Sparkles size={42} strokeWidth={1.5}/></span>
+                  <span className="orbit-tile parcel"><Package size={30}/></span>
+                  <span className="orbit-tile tools"><Wrench size={27}/></span>
+                  <span className="orbit-tile route"><Navigation size={27}/></span>
+                  <span className="orbit-dot one"/><span className="orbit-dot two"/>
+                </div>
+                <div className="hero-copy">
                   <span className="eyebrow">
                     {T(
                       "СЕРВИСЫ ДЛЯ ВАШЕГО ДНЯ",
