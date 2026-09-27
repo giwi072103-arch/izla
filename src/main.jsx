@@ -1078,7 +1078,7 @@ function CreateOrder({ initialCategory, user, config, notify, onDone, city }) {
             maxLength={300}
             required
           />
-          <AddressPicker apiKey={config.yandexKey} value={v.pickup} city={v.city}
+          <AddressPicker apiKey={config.yandexKey} value={v.pickup} city={v.city} selectedPoint={v.pickupPoint}
             onSelect={(point, address) => set(p => ({ ...p, pickupPoint: point, pickup: address || `${point.lat.toFixed(6)}, ${point.lon.toFixed(6)}` }))} />
           {v.category === "delivery" && (
             <>
@@ -1090,7 +1090,7 @@ function CreateOrder({ initialCategory, user, config, notify, onDone, city }) {
                 maxLength={300}
                 required
               />
-              <AddressPicker apiKey={config.yandexKey} value={v.destination} city={v.city}
+              <AddressPicker apiKey={config.yandexKey} value={v.destination} city={v.city} selectedPoint={v.destPoint}
                 onSelect={(point, address) => set(p => ({ ...p, destPoint: point, destination: address || `${point.lat.toFixed(6)}, ${point.lon.toFixed(6)}` }))} />
               <Field
                 label={T(

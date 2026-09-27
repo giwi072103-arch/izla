@@ -189,13 +189,40 @@ function loadMaps(key) {
   });
   return mapsPromise;
 }
-export function AddressPicker({ apiKey, value, city, onSelect }) {
+export function AddressPicker({ apiKey, value, city, selectedPoint, onSelect }) {
   const T = useT(), ref = useRef(), mapRef = useRef(), marker = useRef(),
     latest = useRef(onSelect), sequence = useRef(0), alive = useRef(true),
-    [message, setMessage] = useState(""), [busy, setBusy] = useState(false);
+    [message, setMessage] = useState(""), [busy, setBusy] = useState(false),
+    [suggestions, setSuggestions] = useState([]), [suggestStatus, setSuggestStatus] = useState(""),
+    suggestSequence = useRef(0), selecting = useRef(false);
   latest.current = onSelect;
-  async function choose(coords) {
+  useEffect(() => {
+    const request = ++suggestSequence.current;
+    setSuggestions([]); setSuggestStatus("");
+    if (!apiKey || selectedPoint || value.trim().length < 3) return;
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      if (selecting.current) return;
+      setSuggestStatus("loading");
+      try {
+        const y = await loadMaps(apiKey);
+        if (cancelled || request !== suggestSequence.current) return;
+        const result = await y.geocode(`Узбекистан, ${city}, ${value.trim()}`, { results: 5 });
+        if (cancelled || request !== suggestSequence.current || selecting.current) return;
+        const items = [];
+        result.geoObjects.each(item => {
+          const address = item.getAddressLine(), coords = item.geometry.getCoordinates();
+          if (address && !items.some(x => x.address === address)) items.push({ address, coords });
+        });
+        setSuggestions(items); setSuggestStatus(items.length ? "" : "empty");
+      } catch { if (!cancelled && request === suggestSequence.current) setSuggestStatus("error"); }
+    }, 600);
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [apiKey, value, city, selectedPoint?.lat, selectedPoint?.lon]);
+  async function choose(coords, knownAddress) {
     const request = ++sequence.current;
+    selecting.current = true; suggestSequence.current++;
+    setSuggestions([]); setSuggestStatus("");
     setBusy(true); setMessage("");
     try {
       const y = await loadMaps(apiKey);
@@ -205,6 +232,10 @@ export function AddressPicker({ apiKey, value, city, onSelect }) {
       mapRef.current.geoObjects.add(marker.current);
       marker.current.events.add("dragend", () => choose(marker.current.geometry.getCoordinates()));
       mapRef.current.setCenter(coords, 16);
+      if (knownAddress) {
+        latest.current({ lat: coords[0], lon: coords[1] }, knownAddress);
+        return;
+      }
       // Store the selected coordinates even if reverse geocoding fails.
       latest.current({ lat: coords[0], lon: coords[1] }, "");
       const result = await y.geocode(coords, { results: 1 });
@@ -214,7 +245,7 @@ export function AddressPicker({ apiKey, value, city, onSelect }) {
       if (!address) setMessage(T("Точка выбрана. Укажите улицу и дом вручную.", "Nuqta tanlandi. Manzilni kiriting.", "Point selected. Enter the address manually."));
     } catch {
       if (alive.current && request === sequence.current) setMessage(T("Не удалось определить адрес. Введите его вручную.", "Manzilni qo‘lda kiriting.", "Could not resolve address. Enter it manually."));
-    } finally { if (alive.current && request === sequence.current) setBusy(false); }
+    } finally { if (request === sequence.current) { selecting.current = false; if (alive.current) setBusy(false); } }
   }
   useEffect(() => {
     alive.current = true;
@@ -246,6 +277,10 @@ export function AddressPicker({ apiKey, value, city, onSelect }) {
   }
   if (!apiKey) return <p className="notice">{T("Выбор на карте появится после подключения Яндекс Карт. Пока введите адрес вручную.", "Xarita ulanguncha manzilni qo‘lda kiriting.", "Enter the address manually until Yandex Maps is connected.")}</p>;
   return <div className="form-stack">
+    {suggestions.length > 0 && <ul className="address-suggestions" aria-label={T("Подходящие адреса", "Mos manzillar", "Matching addresses")}>
+      {suggestions.map(item => <li key={item.address}><button type="button" disabled={busy} onClick={() => choose(item.coords, item.address)}><MapPin size={18}/><span>{item.address}</span><ArrowRight size={16}/></button></li>)}
+    </ul>}
+    {suggestStatus && <small role="status">{suggestStatus === "loading" ? T("Ищем адреса…", "Manzillar qidirilmoqda…", "Searching addresses…") : suggestStatus === "empty" ? T("Ничего не найдено. Уточните город и улицу.", "Topilmadi. Shahar va ko‘chani aniqlashtiring.", "No matches. Refine the city and street.") : T("Подсказки Яндекса недоступны. Можно ввести адрес вручную.", "Yandex tavsiyalari mavjud emas. Manzilni qo‘lda kiriting.", "Yandex suggestions unavailable. Enter the address manually.")}</small>}
     <div className="row"><Button type="button" className="secondary" busy={busy} onClick={locate}><Navigation size={16}/>{T("Моё местоположение", "Mening joylashuvim", "My location")}</Button>
     <Button type="button" className="ghost" disabled={busy || value.trim().length < 3} onClick={search}>{T("Найти адрес", "Manzilni topish", "Find address")}</Button></div>
     <div ref={ref} className="map" aria-label={T("Выберите адрес на карте", "Manzilni xaritada tanlang", "Select address on map")} />

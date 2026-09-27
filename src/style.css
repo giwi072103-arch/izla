@@ -2059,3 +2059,10 @@ dialog::backdrop {
     scroll-behavior: auto !important;
   }
 }
+
+.address-suggestions { list-style: none; padding: 0; margin: 0; border: 1px solid var(--border, #d5dfda); border-radius: 16px; overflow: hidden; }
+.address-suggestions li + li { border-top: 1px solid var(--border, #d5dfda); }
+.address-suggestions button { width: 100%; display: flex; align-items: center; gap: 12px; padding: 14px; text-align: left; background: transparent; color: inherit; border: 0; border-radius: 0; }
+.address-suggestions button span { flex: 1; }
+.address-suggestions button svg { flex-shrink: 0; }
+.address-suggestions button:hover, .address-suggestions button:focus-visible { background: #2bb58720; outline: 2px solid #2bb587; outline-offset: -2px; }
