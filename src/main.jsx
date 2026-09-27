@@ -53,6 +53,7 @@ import {
   CameraCapture,
   SlideAction,
   DeliveryMap,
+  AddressPicker,
   Empty,
 } from "./components";
 import Legal from "./legal";
@@ -1072,21 +1073,25 @@ function CreateOrder({ initialCategory, user, config, notify, onDone, city }) {
                 : T("Адрес выполнения", "Bajarish manzili", "Service address")
             }
             value={v.pickup}
-            onChange={(e) => update("pickup", e.target.value)}
+            onChange={(e) => set(p => ({ ...p, pickup: e.target.value, pickupPoint: undefined }))}
             minLength={5}
             maxLength={300}
             required
           />
+          <AddressPicker apiKey={config.yandexKey} value={v.pickup} city={v.city}
+            onSelect={(point, address) => set(p => ({ ...p, pickupPoint: point, pickup: address || `${point.lat.toFixed(6)}, ${point.lon.toFixed(6)}` }))} />
           {v.category === "delivery" && (
             <>
               <Field
                 label={T("Куда доставить", "Qayerga yetkazish", "Destination")}
                 value={v.destination}
-                onChange={(e) => update("destination", e.target.value)}
+                onChange={(e) => set(p => ({ ...p, destination: e.target.value, destPoint: undefined }))}
                 minLength={5}
                 maxLength={300}
                 required
               />
+              <AddressPicker apiKey={config.yandexKey} value={v.destination} city={v.city}
+                onSelect={(point, address) => set(p => ({ ...p, destPoint: point, destination: address || `${point.lat.toFixed(6)}, ${point.lon.toFixed(6)}` }))} />
               <Field
                 label={T(
                   "Что внутри: предметы, количество, особенности",
@@ -1167,7 +1172,7 @@ function CreateOrder({ initialCategory, user, config, notify, onDone, city }) {
             />
           </div>
           {v.category === "delivery" && (
-            <DeliveryMap apiKey={config.yandexKey} />
+            v.pickupPoint && v.destPoint ? <DeliveryMap apiKey={config.yandexKey} order={{ id: "preview", status: "preview", city: v.city, pickup: v.pickup, destination: v.destination, pickup_lat: v.pickupPoint.lat, pickup_lon: v.pickupPoint.lon, dest_lat: v.destPoint.lat, dest_lon: v.destPoint.lon }} /> : null
           )}
           <div className="panel form-stack">
             {!verified && (
