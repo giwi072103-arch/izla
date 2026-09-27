@@ -20,6 +20,12 @@ export async function configureTelegram() {
       process.env.TELEGRAM_BOT_USERNAME = bot.username;
       const url = new URL('/api/telegram/webhook', origin).href;
       await call('setWebhook', { url, secret_token: secret, allowed_updates: ['message'], drop_pending_updates: false });
+      await call('setMyCommands', { commands: [
+        { command:'help', description:'Команды IZLA' }, { command:'orders', description:'Мои заказы' },
+        { command:'client', description:'Режим клиента' }, { command:'worker', description:'Режим исполнителя' },
+        { command:'notifications_on', description:'Включить уведомления' }, { command:'notifications_off', description:'Отключить уведомления' },
+        { command:'admin', description:'Админка' }, { command:'id', description:'Мой Telegram ID' }
+      ] });
       const info = await call('getWebhookInfo', {});
       if (info.url !== url) throw new Error('Telegram webhook URL mismatch');
       console.log(`Telegram webhook configured and verified for @${bot.username}`);

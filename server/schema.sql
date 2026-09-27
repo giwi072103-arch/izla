@@ -20,3 +20,5 @@ CREATE INDEX IF NOT EXISTS orders_worker ON orders(worker_id);
 CREATE INDEX IF NOT EXISTS evidence_order ON evidence(order_id);
 CREATE INDEX IF NOT EXISTS messages_order ON messages(order_id);
 CREATE INDEX IF NOT EXISTS audit_order ON audit(order_id);
+CREATE TABLE IF NOT EXISTS notification_preferences (user_id uuid PRIMARY KEY REFERENCES users(id), enabled boolean NOT NULL DEFAULT true);
+CREATE TABLE IF NOT EXISTS notifications (id uuid PRIMARY KEY, user_id uuid REFERENCES users(id), order_id uuid REFERENCES orders(id), body text NOT NULL, created_at timestamptz NOT NULL DEFAULT now(), read_at timestamptz, sent boolean NOT NULL DEFAULT false, attempts int NOT NULL DEFAULT 0);

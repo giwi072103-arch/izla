@@ -136,6 +136,12 @@ function Shell({ lang, setLang }) {
     const id = setTimeout(() => setToast(""), 6000);
     return () => clearTimeout(id);
   }, [toast]);
+  useEffect(() => {
+    const sync = () => { if (!document.hidden) refresh().catch(() => {}); };
+    window.addEventListener("focus", sync);
+    document.addEventListener("visibilitychange", sync);
+    return () => { window.removeEventListener("focus", sync); document.removeEventListener("visibilitychange", sync); };
+  }, []);
   const go = (p) => {
     location.hash = p;
     setPage(p);
@@ -2099,6 +2105,36 @@ function eventLabel(a, T) {
   };
   return labels[a] ? T(...labels[a]) : a;
 }
+function AccountControls({ user, refresh, notify, go }) {
+  const T = useT(), [busy, setBusy] = useState(false), [inbox, setInbox] = useState({ items: [], enabled: true });
+  useEffect(() => {
+    let dead = false;
+    const load = () => api("/notifications").then(d => { if (!dead) setInbox(d); }).catch(() => {});
+    load(); const timer = setInterval(() => { if (!document.hidden) load(); }, 20000);
+    return () => { dead = true; clearInterval(timer); };
+  }, [user.id]);
+  async function role(next) {
+    setBusy(true);
+    try { await api("/account/role", { role: next }); await refresh(); notify(T("Режим аккаунта изменён", "Hisob rejimi o‘zgardi", "Account mode updated")); }
+    catch (e) { notify(e); } finally { setBusy(false); }
+  }
+  return <section className="account-center panel form-stack">
+    <div className="row"><div className="round-icon"><Settings size={22}/></div><h2>{T("Ваш режим", "Sizning rejimingiz", "Your mode")}</h2></div>
+    {user.role === "admin" ? <button className="primary" onClick={() => go("admin")}><LayoutDashboard size={20}/>{T("Открыть админку", "Boshqaruvni ochish", "Open admin")}</button> : <div className="mode-switch">
+      {["client", "worker"].map(r => <button type="button" key={r} aria-pressed={user.role === r} disabled={busy || user.role === r} className={user.role === r ? "chosen" : ""} onClick={() => role(r)}>{r === "client" ? <UserRound size={25}/> : <Wrench size={25}/>}<span><strong>{r === "client" ? T("Я клиент", "Men mijozman", "Client") : T("Я исполнитель", "Men ijrochiman", "Provider")}</strong><small>{r === "client" ? T("Создавать заявки", "Buyurtma yaratish", "Post tasks") : T("Предлагать услуги и брать заказы", "Xizmat va buyurtmalar", "Offer services and take tasks")}</small></span>{user.role === r && <CheckCircle2 size={19}/>}</button>)}
+    </div>}
+    <p className="small muted">{T("История и текущие заказы сохраняются при переключении.", "Rejim almashganda buyurtmalar saqlanadi.", "Your history and existing tasks stay with your account.")}</p>
+    <div className="row"><MessageCircle size={21}/><h3>{T("Уведомления", "Bildirishnomalar", "Notifications")}</h3><span className="pill">{inbox.items.filter(n => !n.read_at).length}</span></div>
+    <label className="checkbox"><input type="checkbox" checked={inbox.enabled} disabled={busy} onChange={async e => {
+      const enabled=e.target.checked; setBusy(true);
+      try { await api("/notifications/preferences", { enabled }); setInbox(p => ({...p,enabled})); }
+      catch(e) { notify(e); } finally {setBusy(false);}
+    }}/>{T("Присылать уведомления в Telegram", "Telegram orqali xabar berish", "Send notifications to Telegram")}</label>
+    <div className="inbox-list">{inbox.items.length ? inbox.items.map(n => <button key={n.id} className={n.read_at ? "inbox-item" : "inbox-item unread"} onClick={() => go("order/"+n.order_id)}><span>{n.body}<small>{new Date(n.created_at).toLocaleString()}</small></span><ArrowUpRight size={18}/></button>) : <p className="muted">{T("Здесь появятся события ваших заказов.", "Buyurtma xabarlari shu yerda bo‘ladi.", "Your order updates will appear here.")}</p>}</div>
+    {inbox.items.some(n=>!n.read_at) && <button className="ghost" onClick={async()=>{try{await api("/notifications/read",{});setInbox(p=>({...p,items:p.items.map(n=>({...n,read_at:new Date().toISOString()}))}));}catch(e){notify(e);}}}>{T("Отметить прочитанными", "O‘qilgan deb belgilash", "Mark as read")}</button>}
+    <p className="small muted">{T("В боте: /help — команды, /orders — заказы, /client и /worker — смена режима.", "Bot: /help — buyruqlar, /orders — buyurtmalar, /client va /worker — rejim.", "Bot: /help, /orders, /client and /worker.")}</p>
+  </section>;
+}
 function Profile({ user, config, notify, refresh, onLogin, onLogout, go }) {
   const T = useT(),
     [photos, setPhotos] = useState(["", "", "", "", ""]),
@@ -2169,6 +2205,7 @@ function Profile({ user, config, notify, refresh, onLogin, onLogout, go }) {
           </span>
         </div>
       </div>
+      <AccountControls user={user} refresh={refresh} notify={notify} go={go}/>
       <div className="form-layout">
         {config.identityVerificationRequired !== false ? <section className="panel form-stack">
           <h2>

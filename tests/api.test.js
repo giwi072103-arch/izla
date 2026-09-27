@@ -13,7 +13,7 @@ const jpeg =
     Buffer.from([255, 217]),
   ]).toString("base64");
 test("complete order flow, evidence authorization, dispute and review permissions", async () => {
-  const { app, db, close } = await createApp(),
+  const { app, db, close, flushNotifications } = await createApp(),
     server = app.listen(0, "127.0.0.1");
   await new Promise((r) => server.once("listening", r));
   const base = "http://127.0.0.1:" + server.address().port;
@@ -44,6 +44,13 @@ test("complete order flow, evidence authorization, dispute and review permission
       a = await call("/dev/login", { role: "admin" });
     assert.equal(c.status, 200);
     assert.equal(w.status, 200);
+    assert.equal((await call('/account/role', { role: 'worker' })).status, 401);
+    assert.equal((await call('/account/role', { role: 'admin' }, c.cookie)).status, 400);
+    assert.equal((await call('/account/role', { role: 'worker' }, c.cookie)).json.user.role, 'worker');
+    assert.equal((await call('/me', undefined, c.cookie)).json.user.role, 'worker');
+    assert.equal((await call('/account/role', { role: 'client' }, c.cookie)).json.user.role, 'client');
+    assert.equal((await call('/account/role', { role: 'client' }, a.cookie)).status, 403);
+
     await db.query("UPDATE users SET verified='none' WHERE role IN ('client','worker')");
     assert.equal((await call('/config')).json.identityVerificationRequired, false);
     assert.equal((await call('/listings', { category: 'repair', title: 'Home repair service', description: 'Experienced repair worker for home maintenance', city: 'Бухара', price: 20000 }, w.cookie)).status, 200);
@@ -82,6 +89,29 @@ test("complete order flow, evidence authorization, dispute and review permission
       w.cookie,
     );
     assert.equal(accept.status, 200, JSON.stringify(accept.json));
+    const inbox = await call('/notifications', undefined, c.cookie);
+    assert.ok(inbox.json.items.some(n => n.order_id === id));
+    assert.equal((await call('/notifications', undefined, w.cookie)).json.items.some(n => n.order_id === id), false);
+    const originalFetch = global.fetch, previousToken = process.env.TELEGRAM_BOT_TOKEN;
+    let delivered = 0;
+    process.env.TELEGRAM_BOT_TOKEN = 'test-not-a-real-token';
+    global.fetch = async (url, options) => {
+      if (String(url).startsWith('https://api.telegram.org/')) { delivered++; return new Response(JSON.stringify({ok:true,result:{}})); }
+      return originalFetch(url, options);
+    };
+    try {
+      await flushNotifications();
+      assert.ok(delivered > 0);
+      const first = delivered;
+      await flushNotifications();
+      assert.equal(delivered, first, 'Sent notifications must not be sent again');
+    } finally {
+      global.fetch = originalFetch;
+      if (previousToken === undefined) delete process.env.TELEGRAM_BOT_TOKEN; else process.env.TELEGRAM_BOT_TOKEN = previousToken;
+    }
+    assert.equal((await call('/notifications/preferences', {enabled:false}, c.cookie)).status, 200);
+    assert.equal((await call('/notifications', undefined, c.cookie)).json.enabled, false);
+
     assert.equal(
       (await call("/orders/" + id + "/actions", { action: "accept" }, w.cookie))
         .status,

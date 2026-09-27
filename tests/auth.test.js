@@ -113,6 +113,13 @@ test("Telegram verifies matching self-contact, browser secret and one-time code"
     assert.equal(ok.status, 200);
     assert.equal(ok.body.user.phone, phone);
     assert.ok(ok.cookie.includes("HttpOnly"));
+    await post('/telegram/webhook', {message:{...message,text:'/worker'}}, true);
+    assert.match(sent.at(-1).text, /режим исполнителя/);
+    await post('/telegram/webhook', {message:{...message,text:'/admin'}}, true);
+    assert.match(sent.at(-1).text, /только администратору/);
+    await post('/telegram/webhook', {message:{...message,text:'/notifications_off'}}, true);
+    assert.match(sent.at(-1).text, /отключены/);
+
     assert.equal(
       (await post("/auth/verify", { ...start.body, code })).status,
       400,

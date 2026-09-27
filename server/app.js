@@ -42,6 +42,38 @@ export async function createApp() {
       "INSERT INTO audit(id,actor,order_id,action,details) VALUES($1,$2,$3,$4,$5)",
       [randomUUID(), actor, order, action, JSON.stringify(details)],
     );
+  for (const tgId of (process.env.ADMIN_TELEGRAM_IDS || "").split(",").map(x => x.trim()).filter(x => /^\d+$/.test(x))) {
+    await query("UPDATE users SET role='admin' WHERE telegram_id=$1 AND banned=false", [tgId]);
+  }
+  async function changeRole(user, role) {
+    if (user.role === "admin") throw error(403, "Администратор сохраняет доступ к управлению");
+    const updated = await one("UPDATE users SET role=$1 WHERE id=$2 RETURNING *", [role, user.id]);
+    await audit(user.id, null, "account.role_changed", { role });
+    return updated;
+  }
+  async function enqueue(order, actor, body, client = db) {
+    for (const id of [...new Set([order.client_id, order.worker_id].filter(id => id && id !== actor))]) {
+      await client.query("INSERT INTO notifications(id,user_id,order_id,body) VALUES($1,$2,$3,$4)", [randomUUID(), id, order.id, body]);
+    }
+  }
+  let flushing = false;
+  async function flushNotifications() {
+    if (flushing || !process.env.TELEGRAM_BOT_TOKEN) return;
+    flushing = true;
+    try {
+      const pending = (await query("SELECT n.*,u.telegram_id,u.banned FROM notifications n JOIN users u ON u.id=n.user_id WHERE n.sent=false AND n.attempts<5 ORDER BY n.created_at LIMIT 10")).rows;
+      for (const n of pending) {
+        const pref = await one("SELECT enabled FROM notification_preferences WHERE user_id=$1", [n.user_id]);
+        if (n.banned || pref?.enabled === false) { await query("UPDATE notifications SET sent=true WHERE id=$1", [n.id]); continue; }
+        await query("UPDATE notifications SET attempts=attempts+1 WHERE id=$1", [n.id]);
+        try {
+          await telegram("sendMessage", { chat_id: n.telegram_id, text: n.body,
+            reply_markup: { inline_keyboard: [[{ text: "Открыть заказ", url: (process.env.APP_ORIGIN || "https://izla-production.up.railway.app") + "/#order/" + n.order_id }]] } });
+          await query("UPDATE notifications SET sent=true WHERE id=$1", [n.id]);
+        } catch { console.error("Telegram notification delivery failed; retry queued"); }
+      }
+    } finally { flushing = false; }
+  }
   app.disable("x-powered-by");
   app.set("trust proxy", 1);
   app.use(
@@ -178,6 +210,22 @@ export async function createApp() {
     }),
   );
   app.get("/api/me", (req, res) => res.json({ user: req.user || null }));
+  app.post("/api/account/role", auth, async (req, res) => {
+    res.json({ user: await changeRole(req.user, z.enum(["client", "worker"]).parse(req.body.role)) });
+  });
+  app.get("/api/notifications", auth, async (req, res) => {
+    const pref = await one("SELECT enabled FROM notification_preferences WHERE user_id=$1", [req.user.id]);
+    res.json({ enabled: pref?.enabled !== false, items: (await query("SELECT id,order_id,body,created_at,read_at FROM notifications WHERE user_id=$1 ORDER BY created_at DESC LIMIT 30", [req.user.id])).rows });
+  });
+  app.post("/api/notifications/preferences", auth, async (req, res) => {
+    const enabled = z.boolean().parse(req.body.enabled);
+    await query("INSERT INTO notification_preferences(user_id,enabled) VALUES($1,$2) ON CONFLICT(user_id) DO UPDATE SET enabled=EXCLUDED.enabled", [req.user.id, enabled]);
+    res.json({ ok: true });
+  });
+  app.post("/api/notifications/read", auth, async (req,res) => {
+    await query("UPDATE notifications SET read_at=now() WHERE user_id=$1 AND read_at IS NULL", [req.user.id]);
+    res.json({ ok: true });
+  });
   app.post("/api/auth/start", authLimit, async (req, res) => {
     if (
       !process.env.TELEGRAM_BOT_TOKEN ||
@@ -222,13 +270,39 @@ export async function createApp() {
     const m = req.body.message;
     if (!m || m.chat?.type !== "private" || !m.from)
       return res.json({ ok: true });
+    const command = m.text?.trim().split(/\s+/)[0].split("@")[0];
+    if (["/help", "/id", "/orders", "/client", "/worker", "/admin", "/notifications_on", "/notifications_off"].includes(command)) {
+      const origin = process.env.APP_ORIGIN || "https://izla-production.up.railway.app";
+      const u = await one("SELECT * FROM users WHERE telegram_id=$1 AND banned=false", [String(m.from.id)]);
+      let message, buttons = [[{ text: "Открыть IZLA", url: origin }]];
+      if (command === "/id") message = `Ваш Telegram ID: ${m.from.id}`;
+      else if (command === "/help") message = "IZLA: /orders — мои заказы; /client — режим клиента; /worker — режим исполнителя; /notifications_on и /notifications_off — уведомления; /admin — админка; /id — ваш ID. Фото и подтверждение передачи выполняются в приложении.";
+      else if (!u) message = "Сначала войдите в IZLA через свой номер Telegram. Заблокированным аккаунтам управление недоступно.";
+      else if (command === "/client" || command === "/worker") {
+        if (u.role === "admin") message = "Администратор сохраняет роль. Откройте /admin.";
+        else { await changeRole(u, command.slice(1)); message = command === "/client" ? "Включён режим клиента. Вернитесь в приложение." : "Включён режим исполнителя. Вернитесь в приложение."; }
+      } else if (command.startsWith("/notifications_")) {
+        const enabled = command === "/notifications_on";
+        await query("INSERT INTO notification_preferences(user_id,enabled) VALUES($1,$2) ON CONFLICT(user_id) DO UPDATE SET enabled=EXCLUDED.enabled", [u.id, enabled]);
+        message = enabled ? "Уведомления включены." : "Уведомления в Telegram отключены. История доступна в профиле.";
+      } else if (command === "/admin") {
+        if (u.role !== "admin") message = "Доступ только администратору. Ваш ID: " + m.from.id;
+        else { message = "Управление IZLA: пользователи, объявления, заказы и споры. Войдите на сайте тем же Telegram-аккаунтом."; buttons = [[{text:"Открыть админку",url:origin+"/#admin"}]]; }
+      } else {
+        const orders = (await query("SELECT id,status FROM orders WHERE client_id=$1 OR worker_id=$1 ORDER BY created_at DESC LIMIT 5", [u.id])).rows;
+        message = orders.length ? "Ваши последние заказы:\n" + orders.map(o => `${o.id.slice(0,8)} · ${o.status}`).join("\n") : "У вас пока нет заказов.";
+        if (orders.length) buttons = orders.map(o => [{ text: "Заказ " + o.id.slice(0,8), url: origin + "/#order/" + o.id }]);
+      }
+      await telegram("sendMessage", { chat_id:m.chat.id,text:message,reply_markup:{inline_keyboard:buttons} });
+      return res.json({ ok:true });
+    }
     const startCommand = m.text?.match(/^\/start(?:@[A-Za-z0-9_]+)?(?:\s+(\S+))?\s*$/);
     if (startCommand) {
       const id = startCommand[1];
       if (!id) {
         await telegram("sendMessage", {
           chat_id: m.chat.id,
-          text: "Добро пожаловать в IZLA! Для регистрации откройте приложение, укажите имя и номер вашего Telegram, затем нажмите «Получить код в Telegram». Перейдите в бота по выданной ссылке. / Ro‘yxatdan o‘tish uchun IZLA ilovasini oching.",
+          text: "Команды: /help · /orders · /client · /worker · /admin · /id. Добро пожаловать в IZLA! Для регистрации откройте приложение, укажите имя и номер вашего Telegram, затем нажмите «Получить код в Telegram». Перейдите в бота по выданной ссылке. / Ro‘yxatdan o‘tish uchun IZLA ilovasini oching.",
           reply_markup: { inline_keyboard: [[{ text: "Открыть IZLA / IZLA’ni ochish", url: process.env.APP_ORIGIN || "https://izla-production.up.railway.app" }]] },
         });
         return res.json({ ok: true });
@@ -597,6 +671,8 @@ export async function createApp() {
       );
       if (["confirm", "cancel"].includes(action))
         await c.query("DELETE FROM locations WHERE order_id=$1", [id]);
+      const notices = { accept: "Исполнитель принял заказ", handover: "Отправитель подтвердил передачу", start: "Работа по заказу началась", finish: "Заказ ожидает подтверждения", confirm: "Заказ завершён", cancel: "Заказ отменён" };
+      await enqueue({ ...o, ...patch }, req.user.id, "IZLA: " + notices[action], c);
       await c.query("COMMIT");
       res.json({ ok: true });
     } catch (e) {
@@ -623,6 +699,7 @@ export async function createApp() {
       "INSERT INTO messages(id,order_id,user_id,body) VALUES($1,$2,$3,$4)",
       [randomUUID(), o.id, req.user.id, text(1, 2000).parse(req.body.body)],
     );
+    await enqueue(o, req.user.id, "IZLA: новое сообщение по заказу");
     res.json({ ok: true });
   });
   app.post("/api/orders/:id/location", auth, async (req, res) => {
@@ -666,6 +743,7 @@ export async function createApp() {
         [randomUUID(), o.id, req.user.id, reason],
       );
       await audit(req.user.id, o.id, "dispute.opened", { reason }, c);
+      await enqueue(o, req.user.id, "IZLA: открыт спор по заказу", c);
       await c.query("DELETE FROM locations WHERE order_id=$1", [o.id]);
       await c.query("COMMIT");
       res.json({ ok: true });
@@ -877,6 +955,7 @@ export async function createApp() {
   return {
     app,
     db,
+    flushNotifications,
     close: async () => {
       await db.end();
       if (kyc) await kyc.end();
