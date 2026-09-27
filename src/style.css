@@ -2184,3 +2184,9 @@ input:focus, textarea:focus, select:focus { border-color: #6a9a82; box-shadow: 0
   .mobile-nav { border-radius: 23px 23px 0 0; border-top: 1px solid var(--line); box-shadow: 0 -8px 30px #193b2910; background: var(--surface); }
   @supports (backdrop-filter: blur(12px)) { .mobile-nav { background: color-mix(in srgb, var(--surface) 90%, transparent); backdrop-filter: blur(12px); } }
 }
+[data-theme="dark"] { --muted: #a8bcb1; }
+[data-theme="dark"] .muted, [data-theme="dark"] .sidebar-card p { color: #a8bcb1; }
+[data-theme="dark"] .nav-item { color: #b6c9bf; }
+[data-theme="dark"] .nav-item.active { background: #2b4f40; color: #d2f5e4; }
+[data-theme="dark"] .search-submit { background: #2b4f40; color: #d2f5e4; }
+[data-theme="dark"] .sidebar-bottom { color: #a8bcb1; }
