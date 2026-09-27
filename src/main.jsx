@@ -1075,8 +1075,8 @@ function CreateOrder({ initialCategory, user, config, notify, onDone, city }) {
             maxLength={300}
             required
           />
-          <AddressPicker apiKey={config.yandexKey} value={v.pickup} city={v.city} selectedPoint={v.pickupPoint}
-            onSelect={(point, address) => set(p => ({ ...p, pickupPoint: point, pickup: address || `${point.lat.toFixed(6)}, ${point.lon.toFixed(6)}` }))} />
+          <AddressPicker apiKey={config.yandexKey} geocoderKey={config.yandexGeocoderKey} suggestKey={config.yandexSuggestKey} value={v.pickup} city={v.city} selectedPoint={v.pickupPoint}
+            onSelect={(point, address) => set(p => ({ ...p, pickupPoint: point, pickup: address }))} />
           {v.category === "delivery" && (
             <>
               <Field
@@ -1087,8 +1087,8 @@ function CreateOrder({ initialCategory, user, config, notify, onDone, city }) {
                 maxLength={300}
                 required
               />
-              <AddressPicker apiKey={config.yandexKey} value={v.destination} city={v.city} selectedPoint={v.destPoint}
-                onSelect={(point, address) => set(p => ({ ...p, destPoint: point, destination: address || `${point.lat.toFixed(6)}, ${point.lon.toFixed(6)}` }))} />
+              <AddressPicker apiKey={config.yandexKey} geocoderKey={config.yandexGeocoderKey} suggestKey={config.yandexSuggestKey} value={v.destination} city={v.city} selectedPoint={v.destPoint}
+                onSelect={(point, address) => set(p => ({ ...p, destPoint: point, destination: address }))} />
               <Field
                 label={T(
                   "Что внутри: предметы, количество, особенности",

@@ -189,7 +189,22 @@ function loadMaps(key) {
   });
   return mapsPromise;
 }
-export function AddressPicker({ apiKey, value, city, selectedPoint, onSelect }) {
+async function addressResults(apiKey, geocoderKey, query, count = 1) {
+  if (geocoderKey) {
+    const params = new URLSearchParams({ apikey: geocoderKey, format: "json", lang: "ru_RU", results: String(count), geocode: Array.isArray(query) ? `${query[1]},${query[0]}` : query });
+    const response = await fetch(`https://geocode-maps.yandex.ru/1.x/?${params}`, { signal: AbortSignal.timeout(10000) });
+    if (!response.ok) throw new Error("Geocoder unavailable");
+    const data = await response.json();
+    return (data.response?.GeoObjectCollection?.featureMember || []).map(({ GeoObject: item }) => {
+      const [lon, lat] = item.Point.pos.split(" ").map(Number);
+      return { address: item.metaDataProperty.GeocoderMetaData.text, coords: [lat, lon] };
+    });
+  }
+  const y = await loadMaps(apiKey), result = await y.geocode(query, { results: count }), items = [];
+  result.geoObjects.each(item => items.push({ address: item.getAddressLine(), coords: item.geometry.getCoordinates() }));
+  return items;
+}
+export function AddressPicker({ apiKey, geocoderKey, suggestKey, value, city, selectedPoint, onSelect }) {
   const T = useT(), ref = useRef(), mapRef = useRef(), marker = useRef(),
     latest = useRef(onSelect), sequence = useRef(0), alive = useRef(true),
     [message, setMessage] = useState(""), [busy, setBusy] = useState(false),
@@ -199,32 +214,40 @@ export function AddressPicker({ apiKey, value, city, selectedPoint, onSelect }) 
   useEffect(() => {
     const request = ++suggestSequence.current;
     setSuggestions([]); setSuggestStatus("");
-    if (!apiKey || selectedPoint || value.trim().length < 3) return;
+    if (!apiKey || selectedPoint || value.trim().length < 2) return;
     let cancelled = false;
     const timer = setTimeout(async () => {
       if (selecting.current) return;
       setSuggestStatus("loading");
       try {
-        const y = await loadMaps(apiKey);
-        if (cancelled || request !== suggestSequence.current) return;
-        const result = await y.geocode(`Узбекистан, ${city}, ${value.trim()}`, { results: 5 });
+        let items;
+        if (suggestKey) {
+          const params = new URLSearchParams({ apikey: suggestKey, text: `Узбекистан, ${city}, ${value.trim()}`, results: "5", types: "geo", print_address: "1", lang: "ru" });
+          const response = await fetch(`https://suggest-maps.yandex.ru/v1/suggest?${params}`, { signal: AbortSignal.timeout(10000) });
+          if (!response.ok) throw new Error("Suggestions unavailable");
+          const data = await response.json();
+          items = (data.results || []).map(item => ({ address: item.address?.formatted_address || [item.subtitle?.text, item.title?.text].filter(Boolean).join(", "), coords: null }));
+        } else {
+          items = await addressResults(apiKey, geocoderKey, `Узбекистан, ${city}, ${value.trim()}`, 5);
+        }
         if (cancelled || request !== suggestSequence.current || selecting.current) return;
-        const items = [];
-        result.geoObjects.each(item => {
-          const address = item.getAddressLine(), coords = item.geometry.getCoordinates();
-          if (address && !items.some(x => x.address === address)) items.push({ address, coords });
-        });
+        items = items.filter((item, i, all) => item.address && all.findIndex(x => x.address === item.address) === i);
         setSuggestions(items); setSuggestStatus(items.length ? "" : "empty");
       } catch { if (!cancelled && request === suggestSequence.current) setSuggestStatus("error"); }
-    }, 600);
+    }, 300);
     return () => { cancelled = true; clearTimeout(timer); };
-  }, [apiKey, value, city, selectedPoint?.lat, selectedPoint?.lon]);
+  }, [apiKey, geocoderKey, suggestKey, value, city, selectedPoint?.lat, selectedPoint?.lon]);
   async function choose(coords, knownAddress) {
     const request = ++sequence.current;
     selecting.current = true; suggestSequence.current++;
     setSuggestions([]); setSuggestStatus("");
     setBusy(true); setMessage("");
     try {
+      if (!coords) {
+        const matches = await addressResults(apiKey, geocoderKey, knownAddress);
+        if (!matches.length) throw new Error("Address not found");
+        coords = matches[0].coords;
+      }
       const y = await loadMaps(apiKey);
       if (!alive.current || request !== sequence.current) return;
       if (marker.current) mapRef.current.geoObjects.remove(marker.current);
@@ -238,9 +261,9 @@ export function AddressPicker({ apiKey, value, city, selectedPoint, onSelect }) 
       }
       // Store the selected coordinates even if reverse geocoding fails.
       latest.current({ lat: coords[0], lon: coords[1] }, "");
-      const result = await y.geocode(coords, { results: 1 });
+      const result = await addressResults(apiKey, geocoderKey, coords);
       if (!alive.current || request !== sequence.current) return;
-      const address = result.geoObjects.get(0)?.getAddressLine() || "";
+      const address = result[0]?.address || "";
       latest.current({ lat: coords[0], lon: coords[1] }, address);
       if (!address) setMessage(T("Точка выбрана. Укажите улицу и дом вручную.", "Nuqta tanlandi. Manzilni kiriting.", "Point selected. Enter the address manually."));
     } catch {
@@ -261,10 +284,10 @@ export function AddressPicker({ apiKey, value, city, selectedPoint, onSelect }) 
   async function search() {
     setBusy(true); setMessage("");
     try {
-      const y = await loadMaps(apiKey), result = await y.geocode(`${city}, ${value}`, { results: 1 }), item = result.geoObjects.get(0);
+      const result = await addressResults(apiKey, geocoderKey, `Узбекистан, ${city}, ${value}`), item = result[0];
       if (!alive.current) return;
       if (!item) throw new Error();
-      await choose(item.geometry.getCoordinates());
+      await choose(item.coords, item.address);
     } catch { if (alive.current) setMessage(T("Адрес не найден. Выберите точку на карте.", "Manzil topilmadi.", "Address not found. Select a point on the map.")); }
     finally { if (alive.current) setBusy(false); }
   }

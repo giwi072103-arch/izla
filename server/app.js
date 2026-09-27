@@ -171,6 +171,8 @@ export async function createApp() {
       manualKyc: kycEnabled,
       myid: false,
       yandexKey: process.env.YANDEX_MAPS_KEY || "",
+      yandexGeocoderKey: process.env.YANDEX_GEOCODER_KEY || "",
+      yandexSuggestKey: process.env.YANDEX_SUGGEST_KEY || "",
       development: !prod,
       legalVersion: "2026-09-26",
     }),
