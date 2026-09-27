@@ -23,6 +23,7 @@ test("Telegram verifies matching self-contact, browser secret and one-time code"
   };
   const post = async (path, body, webhook = false) => {
     const r = await fetch(base + "/api" + path, {
+      signal: AbortSignal.timeout(10000),
       method: "POST",
       headers: {
         "content-type": "application/json",
@@ -114,6 +115,7 @@ test("Telegram verifies matching self-contact, browser secret and one-time code"
     );
   } finally {
     global.fetch = realFetch;
+    server.closeAllConnections();
     await new Promise((r) => server.close(r));
     await close();
   }

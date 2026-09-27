@@ -17,7 +17,9 @@ test("complete order flow, evidence authorization, dispute and review permission
   await new Promise((r) => server.once("listening", r));
   const base = "http://127.0.0.1:" + server.address().port;
   const call = async (path, body, cookie) => {
+    if(process.env.CI) console.log("API", path);
     const r = await fetch(base + "/api" + path, {
+      signal: AbortSignal.timeout(10000),
       method: body === undefined ? "GET" : "POST",
       headers: {
         "Content-Type": "application/json",
@@ -289,6 +291,7 @@ test("complete order flow, evidence authorization, dispute and review permission
       503,
     );
     const csrf = await fetch(base + "/api/auth/logout", {
+      signal: AbortSignal.timeout(10000),
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -300,6 +303,7 @@ test("complete order flow, evidence authorization, dispute and review permission
     });
     assert.equal(csrf.status, 403);
   } finally {
+    server.closeAllConnections();
     await new Promise((r) => server.close(r));
     await close();
   }
