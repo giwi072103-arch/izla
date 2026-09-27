@@ -1,0 +1,2 @@
+/* System-first stack keeps the application usable without a third-party font request. */
+@font-face{font-family:Inter;src:local('Inter');font-display:swap}
