@@ -167,6 +167,7 @@ export async function createApp() {
         process.env.TELEGRAM_BOT_USERNAME &&
         process.env.TELEGRAM_WEBHOOK_SECRET
       ),
+      identityVerificationRequired: process.env.IDENTITY_VERIFICATION_REQUIRED !== "false",
       manualKyc: kycEnabled,
       myid: false,
       yandexKey: process.env.YANDEX_MAPS_KEY || "",

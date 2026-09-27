@@ -78,3 +78,17 @@ test("encrypted evidence detects tampering and does not expose plaintext", () =>
   assert.throws(() => c.decrypt(b.toString("base64")));
   assert.throws(() => imageBuffer("data:image/svg+xml;base64,AAA"));
 });
+
+test("optional identity review permits workers but preserves bans and role checks", () => {
+  const prior = process.env.IDENTITY_VERIFICATION_REQUIRED;
+  process.env.IDENTITY_VERIFICATION_REQUIRED = "false";
+  try {
+    const o = { client_id: "c", status: "open" };
+    assert.equal(transition(o, { ...worker, verified: "none" }, "accept").status, "assigned");
+    assert.throws(() => transition(o, { ...worker, banned: true }, "accept"));
+    assert.throws(() => transition(o, { ...worker, role: "client" }, "accept"));
+  } finally {
+    if (prior === undefined) delete process.env.IDENTITY_VERIFICATION_REQUIRED;
+    else process.env.IDENTITY_VERIFICATION_REQUIRED = prior;
+  }
+});

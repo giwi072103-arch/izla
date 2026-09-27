@@ -61,7 +61,7 @@ export function canSeeOrder(user, o) {
 }
 export function assertVerified(user) {
   if (user.banned) throw error(403, "Аккаунт заблокирован");
-  if (!["manual", "myid"].includes(user.verified))
+  if (process.env.IDENTITY_VERIFICATION_REQUIRED !== "false" && !["manual", "myid"].includes(user.verified))
     throw error(403, "Сначала пройдите проверку личности");
 }
 export function transition(

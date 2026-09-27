@@ -4,6 +4,7 @@ import { randomUUID } from "node:crypto";
 import { createApp } from "../server/app.js";
 import { hash } from "../server/crypto.js";
 process.env.NODE_ENV = "test";
+process.env.IDENTITY_VERIFICATION_REQUIRED = "false";
 const jpeg =
   "data:image/jpeg;base64," +
   Buffer.concat([
@@ -43,6 +44,10 @@ test("complete order flow, evidence authorization, dispute and review permission
       a = await call("/dev/login", { role: "admin" });
     assert.equal(c.status, 200);
     assert.equal(w.status, 200);
+    await db.query("UPDATE users SET verified='none' WHERE role IN ('client','worker')");
+    assert.equal((await call('/config')).json.identityVerificationRequired, false);
+    assert.equal((await call('/listings', { category: 'repair', title: 'Home repair service', description: 'Experienced repair worker for home maintenance', city: 'Бухара', price: 20000 }, w.cookie)).status, 200);
+
     assert.equal((await call("/admin", undefined, c.cookie)).status, 403);
     const payload = {
       category: "delivery",

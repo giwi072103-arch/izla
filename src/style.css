@@ -2066,3 +2066,44 @@ dialog::backdrop {
 .address-suggestions button span { flex: 1; }
 .address-suggestions button svg { flex-shrink: 0; }
 .address-suggestions button:hover, .address-suggestions button:focus-visible { background: #2bb58720; outline: 2px solid #2bb587; outline-offset: -2px; }
+
+/* Soft depth and short interaction animations; no perpetual motion. */
+:root { --ease-soft: cubic-bezier(.22, 1, .36, 1); }
+button, .primary, .secondary, .listing-card {
+  transition: transform 320ms var(--ease-soft), box-shadow 320ms var(--ease-soft), background-color 220ms ease, border-color 220ms ease;
+}
+.category-icon {
+  position: relative;
+  isolation: isolate;
+  border-radius: 22px;
+  border: 1px solid #ffffff70;
+  box-shadow: inset 0 2px 2px #ffffff90, inset 0 -3px 5px #00000008, 0 7px 18px #16372a0b;
+  transition: transform 420ms var(--ease-soft), box-shadow 420ms var(--ease-soft);
+}
+.category-icon::before {
+  content: ""; position: absolute; inset: 4px; border-radius: 18px;
+  background: linear-gradient(145deg, #ffffff7a, transparent 65%); z-index: -1;
+}
+.category-icon::after {
+  content: ""; position: absolute; width: 6px; height: 6px; top: 11px; right: 11px;
+  border-radius: 50%; background: currentColor; opacity: .3;
+}
+.category-icon svg { filter: drop-shadow(0 3px 2px #00000016); transition: transform 420ms var(--ease-soft); }
+.category.selected .category-icon { transform: translateY(-3px); box-shadow: inset 0 2px 2px #ffffff90, 0 8px 22px #206a5225; outline: 2px solid var(--green); outline-offset: 3px; }
+.category.selected .category-icon svg { transform: rotate(-7deg) scale(1.1); }
+.primary svg, .secondary svg { transition: transform 320ms var(--ease-soft); }
+button:active:not(:disabled) { transform: scale(.97); }
+dialog[open] { animation: modal-enter 300ms var(--ease-soft) both; }
+dialog[open]::backdrop { animation: backdrop-enter 250ms ease both; }
+@keyframes modal-enter { from { opacity: 0; transform: translateY(14px) scale(.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes backdrop-enter { from { opacity: 0; } to { opacity: 1; } }
+@media (hover: hover) and (pointer: fine) {
+  .category:hover .category-icon { transform: translateY(-5px) rotate(-3deg); box-shadow: inset 0 2px 2px #ffffff90, 0 12px 24px #206a5220; }
+  .category:hover .category-icon svg { transform: rotate(8deg) scale(1.12); }
+  .listing-card:hover { transform: translateY(-4px); box-shadow: 0 16px 36px #15372816; }
+  .primary:hover:not(:disabled) svg { transform: translateX(3px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+  .category:hover .category-icon, .category.selected .category-icon, .category-icon svg, .listing-card:hover { transform: none !important; }
+}

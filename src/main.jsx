@@ -588,11 +588,7 @@ function Shell({ lang, setLang }) {
                               {l.name}
                               <small>
                                 <ShieldCheck size={12} />
-                                {T(
-                                  "Личность проверена",
-                                  "Shaxs tekshirilgan",
-                                  "Identity reviewed",
-                                )}
+                                {["manual", "myid"].includes(l.verified) ? T("Личность проверена", "Shaxs tekshirilgan", "Identity reviewed") : T("Телефон подтверждён", "Telefon tasdiqlangan", "Phone confirmed")}
                               </small>
                             </span>
                             <span className="rating">
@@ -682,6 +678,7 @@ function Shell({ lang, setLang }) {
             />
           ) : page === "offer" ? (
             <Offer
+              config={config}
               user={user}
               notify={notify}
               onDone={() => {
@@ -990,7 +987,7 @@ function CreateOrder({ initialCategory, user, config, notify, onDone, city }) {
       setBusy(false);
     }
   }
-  const verified = ["manual", "myid"].includes(user?.verified);
+  const verified = config.identityVerificationRequired === false || ["manual", "myid"].includes(user?.verified);
   return (
     <>
       <div className="page-heading">
@@ -1210,7 +1207,7 @@ function CreateOrder({ initialCategory, user, config, notify, onDone, city }) {
     </>
   );
 }
-function Offer({ user, notify, onDone }) {
+function Offer({ user, config, notify, onDone }) {
   const T = useT(),
     [v, set] = useState({
       category: "repair",
@@ -1291,7 +1288,7 @@ function Offer({ user, notify, onDone }) {
             rows={6}
           />
         </Field>
-        {!["manual", "myid"].includes(user?.verified) && (
+        {config.identityVerificationRequired !== false && !["manual", "myid"].includes(user?.verified) && (
           <p className="notice">
             {T(
               "Сначала пройдите проверку в профиле.",
@@ -1305,7 +1302,7 @@ function Offer({ user, notify, onDone }) {
           busy={busy}
           disabled={
             user?.role !== "worker" ||
-            !["manual", "myid"].includes(user?.verified)
+            (config.identityVerificationRequired !== false && !["manual", "myid"].includes(user?.verified))
           }
         >
           {T("Опубликовать", "Joylash", "Publish")}
@@ -2165,7 +2162,7 @@ function Profile({ user, config, notify, refresh, onLogin, onLogout, go }) {
         </div>
       </div>
       <div className="form-layout">
-        <section className="panel form-stack">
+        {config.identityVerificationRequired !== false ? <section className="panel form-stack">
           <h2>
             {T(
               "Подтверждение личности",
@@ -2280,7 +2277,11 @@ function Profile({ user, config, notify, refresh, onLogin, onLogout, go }) {
                   )}
             </p>
           )}
-        </section>
+        </section> : <section className="panel form-stack">
+          <h2>{T("Можно начинать", "Boshlashingiz mumkin", "Ready to start")}</h2>
+          <p>{T("Проверка документов временно не требуется. Создавайте заявки или предлагайте услуги после подтверждения телефона.", "Hujjat tekshiruvi vaqtincha talab qilinmaydi. Telefon tasdiqlangach buyurtma yoki xizmat yarating.", "Document review is temporarily optional. Post tasks or offer services after confirming your phone.")}</p>
+          <button className="primary" onClick={() => go(user.role === "worker" ? "offer" : "create")}>{T("Начать", "Boshlash", "Get started")}<ArrowRight size={18}/></button>
+        </section>}
         <aside className="panel">
           <h3>
             <Lock size={20} />
