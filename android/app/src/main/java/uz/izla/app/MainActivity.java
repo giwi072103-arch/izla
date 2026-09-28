@@ -83,7 +83,7 @@ public final class MainActivity extends Activity {
         settings.setMediaPlaybackRequiresUserGesture(true);
         settings.setSupportMultipleWindows(true);
         settings.setJavaScriptCanOpenWindowsAutomatically(false);
-        settings.setUserAgentString(settings.getUserAgentString() + " IZLA-Android/1.0.0");
+        settings.setUserAgentString(settings.getUserAgentString() + " IZLA-Android/1.0.1");
         CookieManager.getInstance().setAcceptCookie(true);
         CookieManager.getInstance().setAcceptThirdPartyCookies(web, false);
         WebView.setWebContentsDebuggingEnabled(false);
@@ -177,6 +177,7 @@ public final class MainActivity extends Activity {
         errorPanel.setGravity(Gravity.CENTER);
         errorPanel.setPadding(dp(28), dp(28), dp(28), dp(28));
         errorPanel.setBackgroundColor(Color.rgb(245, 247, 246));
+        errorPanel.addView(new OfflineArt(this), new LinearLayout.LayoutParams(-1, dp(250)));
         TextView title = new TextView(this);
         title.setText(R.string.offline_title);
         title.setTextSize(24);
@@ -192,6 +193,18 @@ public final class MainActivity extends Activity {
         errorPanel.addView(text);
         Button retry = new Button(this);
         retry.setText(R.string.retry);
+        retry.setAllCaps(false);
+        retry.setTextColor(Color.WHITE);
+        retry.setTextSize(16);
+        retry.setPadding(dp(24), dp(12), dp(24), dp(12));
+        android.graphics.drawable.GradientDrawable surface = new android.graphics.drawable.GradientDrawable(
+            android.graphics.drawable.GradientDrawable.Orientation.TL_BR,
+            new int[]{Color.rgb(73, 149, 118), Color.rgb(30, 99, 75)});
+        surface.setCornerRadius(dp(18));
+        surface.setStroke(dp(1), Color.rgb(125, 185, 158));
+        retry.setBackground(new android.graphics.drawable.RippleDrawable(
+            android.content.res.ColorStateList.valueOf(0x40ffffff), surface, null));
+        retry.setElevation(dp(5));
         retry.setOnClickListener(v -> { errorPanel.setVisibility(View.GONE); web.loadUrl(ORIGIN); });
         errorPanel.addView(retry);
         root.addView(errorPanel, new FrameLayout.LayoutParams(-1, -1));

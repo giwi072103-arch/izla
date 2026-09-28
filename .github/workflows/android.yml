@@ -38,10 +38,10 @@ jobs:
       - name: Verify signature and package
         run: |
           mkdir -p apk
-          cp android/app/build/outputs/apk/debug/app-debug.apk apk/izla-1.0.0-pilot.apk
-          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose apk/izla-1.0.0-pilot.apk
-          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging apk/izla-1.0.0-pilot.apk
-          sha256sum apk/izla-1.0.0-pilot.apk > apk/SHA256SUMS.txt
+          cp android/app/build/outputs/apk/debug/app-debug.apk apk/izla-1.0.1-pilot.apk
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose apk/izla-1.0.1-pilot.apk
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging apk/izla-1.0.1-pilot.apk
+          sha256sum apk/izla-1.0.1-pilot.apk > apk/SHA256SUMS.txt
       - uses: actions/upload-artifact@v4
         with:
           name: izla-android-apk
