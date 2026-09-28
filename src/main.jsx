@@ -57,6 +57,7 @@ import {
   Empty,
 } from "./components";
 import Legal from "./legal";
+import ConnectionStatus, { NotFound } from "./ConnectionStatus";
 import "./style.css";
 const icons = {
   delivery: Truck,
@@ -730,13 +731,7 @@ function Shell({ lang, setLang }) {
           ) : page === "support" ? (
             <Support />
           ) : (
-            <Empty
-              title={T(
-                "Страница не найдена",
-                "Sahifa topilmadi",
-                "Page not found",
-              )}
-            />
+            <NotFound onHome={() => go("catalog")} />
           )}
           <footer>
             <span>
@@ -755,6 +750,7 @@ function Shell({ lang, setLang }) {
           </footer>
         </main>
       </div>
+      <ConnectionStatus />
       <nav className="mobile-nav">
         {nav.map(([id, Icon, label]) => (
           <button
@@ -2816,3 +2812,7 @@ function Support() {
   );
 }
 createRoot(document.getElementById("root")).render(<App />);
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}));
+}
