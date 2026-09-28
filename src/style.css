@@ -2257,7 +2257,7 @@ button:not(:disabled):active { transition-duration:90ms; }
  @keyframes compass-search { 0%,100% { transform:rotate(-25deg); } 40%,60% { transform:rotate(45deg); } }
  @keyframes ground-breathe { 50% { transform:scaleX(.86); opacity:.55; } }
 }
-@media(max-width:480px) { .lost-world { height:225px; }.lost-numbers { gap:8px; inset:20px 0 30px; }.lost-zero { width:92px; height:116px; padding:10px; }.lost-lens svg { width:52px; }.not-found { padding:20px 12px 30px; }.lost-four { font-size:112px; letter-spacing:-6px; } }
+@media(max-width:480px) { .lost-world { height:225px; }.lost-numbers { gap:8px; inset:20px 0 30px; }.lost-zero { width:clamp(72px,20vw,92px); height:116px; padding:10px; }.lost-lens svg { width:52px; }.not-found { padding:20px 12px 30px; }.lost-four { font-size:clamp(76px,24vw,112px); letter-spacing:-6px; } }
 [data-theme="dark"] .lost-halo { opacity:.5; }
 [data-theme="dark"] .lost-ground { background:#00000070; }
 @media(prefers-reduced-motion:reduce) { .nav-item svg,.mobile-nav svg,.icon-button svg { transform:none!important; } }
