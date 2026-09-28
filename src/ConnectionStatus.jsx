@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { WifiOff, RefreshCw, ArrowRight, Compass } from 'lucide-react';
 import { useT } from './i18n';
 export function LostScene({ missing = false }) {
+  if (missing) return <div className="lost-world" aria-hidden="true"><div className="lost-halo"/><span className="lost-orbit"/><span className="lost-spark spark-a"/><span className="lost-spark spark-b"/><span className="lost-spark spark-c"/><div className="lost-numbers"><span className="lost-four">4</span><div className="lost-zero"><div className="lost-lens"><Compass size={66} strokeWidth={1.3}/></div></div><span className="lost-four last">4</span></div><span className="lost-ground"/><span className="lost-path"/></div>;
   return <div className="signal-scene" aria-hidden="true"><span className="signal-ring ring-one"/><span className="signal-ring ring-two"/><span className="signal-satellite satellite-one"/><span className="signal-satellite satellite-two"/><div className="signal-core">{missing ? <Compass size={54} strokeWidth={1.4}/> : <WifiOff size={54} strokeWidth={1.4}/>}</div><span className="signal-floor"/></div>;
 }
 export function NotFound({ onHome }) {
